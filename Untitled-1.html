@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeu avec profils (pseudo)</title>
+  <style>
+    body { font-family: Arial; text-align: center; }
+    #game { display: none; }
+    #login { margin-top: 50px; }
+    input, button { padding: 10px; margin: 5px; }
+  </style>
+</head>
+<body>
+
+<div id="login">
+  <h2>Créer ou charger un profil</h2>
+  <input type="text" id="pseudo" placeholder="Choisir un pseudo" />
+  <br>
+  <button onclick="createProfile()">Créer un profil</button>
+  <button onclick="loadProfile()">Se connecter</button>
+</div>
+
+<div id="game">
+  <h2 id="welcome"></h2>
+  <p>Score: <span id="score">0</span></p>
+  <button onclick="incrementScore()">Gagner des points</button>
+  <br><br>
+  <button onclick="logout()">Se déconnecter</button>
+</div>
+
+<script>
+  let user = null;
+  let score = 0;
+
+  function getProfiles() {
+    return JSON.parse(localStorage.getItem('profiles')) || {};
+  }
+
+  function saveProfiles(profiles) {
+    localStorage.setItem('profiles', JSON.stringify(profiles));
+  }
+
+  // Génère un identifiant unique pour l'appareil
+  function getDeviceId() {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = 'dev-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('deviceId', deviceId);
+    }
+    return deviceId;
+  }
+
+  const deviceId = getDeviceId();
+
+  function createProfile() {
+    const pseudoInput = document.getElementById('pseudo');
+    const pseudo = pseudoInput.value.trim();
+
+    if (!pseudo) {
+      alert('Veuillez entrer un pseudo');
+      return;
+    }
+
+    let profiles = getProfiles();
+
+    // Vérification stricte insensible à la casse
+    const pseudoLower = pseudo.toLowerCase();
+    const existing = Object.keys(profiles).some(p => p.toLowerCase() === pseudoLower);
+
+    if (existing) {
+      alert('Ce pseudo est déjà utilisé ! Choisissez-en un autre.');
+      return;
+    }
+
+    // Création du profil avec l'ID de l'appareil
+    profiles[pseudo] = { pseudo: pseudo, score: 0, deviceId: deviceId };
+    saveProfiles(profiles);
+
+    user = profiles[pseudo];
+    pseudoInput.value = '';
+    startGame();
+  }
+
+  function loadProfile() {
+    const pseudoInput = document.getElementById('pseudo');
+    const pseudo = pseudoInput.value.trim();
+
+    if (!pseudo) {
+      alert('Veuillez entrer un pseudo');
+      return;
+    }
+
+    let profiles = getProfiles();
+
+    // Cherche pseudo insensible à la casse
+    const match = Object.keys(profiles).find(p => p.toLowerCase() === pseudo.toLowerCase());
+
+    if (!match) {
+      alert('Pseudo introuvable');
+      return;
+    }
+
+    // Vérifie que le profil appartient bien à cet appareil
+    if (profiles[match].deviceId !== deviceId) {
+      alert("Vous ne pouvez pas vous connecter à ce profil depuis cet appareil.");
+      return;
+    }
+
+    user = profiles[match];
+    pseudoInput.value = '';
+    startGame();
+  }
+
+  function startGame() {
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+
+    document.getElementById('welcome').innerText = "Bienvenue " + user.pseudo;
+    score = user.score;
+    document.getElementById('score').innerText = score;
+  }
+
+  function incrementScore() {
+    score++;
+    document.getElementById('score').innerText = score;
+
+    user.score = score;
+    let profiles = getProfiles();
+    profiles[user.pseudo] = user;
+    saveProfiles(profiles);
+  }
+
+  function logout() {
+    user = null;
+    score = 0;
+
+    document.getElementById('game').style.display = 'none';
+    document.getElementById('login').style.display = 'block';
+    document.getElementById('pseudo').value = '';
+  }
+</script>
+
+</body>
+</html>
